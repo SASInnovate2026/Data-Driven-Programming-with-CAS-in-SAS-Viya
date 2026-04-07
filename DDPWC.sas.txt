@@ -1,0 +1,281 @@
+**************************************************;
+*** Section 1:  Introduction to CASL Variables ***;
+**************************************************;
+
+    *** Start a CAS Session ***;
+    cas mysess;
+    caslib _all_ assign;
+
+    **************************************************;
+    *** SAS Macro:  Print Summary or Detail Report ***;
+    **************************************************;
+
+    %macro conLogic;
+        %let aggreg8=Y;
+
+        %if &aggreg8=Y %then %do;
+            Data public.Agg_Profit ;
+            Set public.Orion_Profit ;
+                keep Product_Category Customer_Group aggProfit;
+                by Product_Category Customer_Group;  
+                retain aggProfit;
+                if first.Customer_Group then AggProfit = 0;
+                aggProfit = aggProfit + Profit;
+                if last.Customer_Group then output;
+            run;
+
+            Proc Print data=public.Agg_Profit;  
+            run;
+        %end;
+        %else %do;
+            Proc Print data=public.Orion_Profit (obs=100);  
+            run;
+        %end;
+    %mend;
+
+    %conLogic;
+
+    *************************************************;
+    *** CASL:  Print Summary or Detail Report     ***;
+    *************************************************;
+
+    Proc CAS;
+        aggreg8='N';
+
+        if aggreg8='Y' then do; 
+            datastep.runCode submit / code="
+                Data public.Agg_Profit (replace=yes) ;
+                Set public.Orion_Profit ;
+                keep Product_Category Customer_Group aggProfit;
+                    by Product_Category Customer_Group;
+                    retain aggProfit;
+                    if first.Customer_Group then AggProfit = 0;
+                    aggProfit = aggProfit + Profit;
+                    if last.Customer_Group then output;
+                run;";
+
+            table.fetch / to=100 
+                table={caslib="public" name="Agg_Profit"};
+        end;
+        else do;
+            table.fetch / to=100 
+                table={caslib="public" name="Orion_Profit"};
+        end;
+    quit;
+
+*************************************************;
+*** Section 2:  CASL Variables, More Detail   ***;
+*************************************************;
+
+    ******************************************************;
+    *** Basic Types                                    ***;
+    ******************************************************;
+
+    Proc CAS;
+        /* CASL varaibles can be strings */
+        custName = "Mary Smith";
+
+        print custName " likes SAS";
+
+        /* CASL variables can be numeric  */
+        y = 99;
+
+        print "y plus 50 = " y + 50;
+
+        /* Boolean  */
+        exists = true;
+
+        if exists then print exists;
+
+        /* String array */
+        colNames = {"make", "model", "type"};
+
+        print "The 2nd column is " colNames[2];
+
+        /* Numeric array */
+        percentiles = {5, 25, 50, 75, 95};
+
+        percentiles = percentiles + 99;
+
+        print "The report shows: " percentiles[1:6];
+
+        /* Multi-dimensional array */
+        multiDim = { {1, 2}, {3, 4}, {5, 6} };
+
+        print "The 2nd unit of the 3rd pair is " multiDim[3,2];
+    quit;
+ 
+    *****************************************************;
+    *** Basic Dictionary                              ***;
+    *****************************************************;
+
+    proc cas;
+        /* Create a dictionary variable */
+        myTable = {name="cars", caslib="casuser", replace=true};
+        
+        /* Display the structure in the log */
+        describe myTable;
+        
+        /* Access by individual keys */
+        print "Table name is " myTable.name;
+    quit;
+
+
+    *****************************************************;
+    *** Nested Dictionary                             ***;
+    *****************************************************;
+
+    proc cas;
+         /* Create a dictionary variable */
+         myCar = {name="Odyssey", Features = {wheels=4, seats=7, color="red"}};  
+         
+         /* Display the structure in the log */
+         describe myCar;
+         
+         /* Access with an individual key */
+         print myCar.features.color;
+   quit;
+
+*************************************************;
+*** Section 3:  CAS Actions, Briefly          ***;
+*************************************************;
+
+    /* Run the FileInfo action */
+    proc cas;
+      table.fileinfo / caslib="public";
+    quit;
+
+    /* Run the Summary action */
+    proc cas;
+      simple.summary 
+        table={caslib="Public" name="Orion_Profit"
+               groupBy="Product_Category"}
+            inputs={"Profit"}
+            subset={"sum"};
+    quit;    
+
+*************************************************;
+*** Section 4:  CASL Result Variables         ***;
+*************************************************;
+
+    *************************************************;
+    *** Base SAS:  Obtain SAS Library Information ***;
+    *************************************************;
+
+    *** Write SAS Library Information to "Results" ***;
+    proc datasets lib=public;
+    quit;
+
+    *** Write SAS Library Information to a Table ***;
+    proc datasets lib=public noprint;
+        contents data=_all_ out=work.pubData;
+    quit;
+
+    *********************************************;
+    *** CASL:  Obtain CAS Library Information ***;
+    *********************************************;
+
+    *** Write SAS Library Information to "Results" ***;
+    proc cas;
+        table.tableinfo / caslib="public";
+    run;
+
+    *** Write SAS Library Information to a CASL variable ***;
+    proc cas;
+        table.tableinfo result=tabInf / caslib="public";
+        
+        describe tabInf;
+        print tabInf.tableInfo;
+        print tabInf.TableInfo[2,"Name"];
+
+    quit;
+
+********************************************************;
+*** Section 5:  Load All Files in a Directory to CAS ***;
+********************************************************;
+
+    *****************************************************;
+    *** SAS Macro:  Load All CSV Files in a Directory ***;
+    *****************************************************;
+
+    %macro import_csv_dir(path); 
+        %let rc = %sysfunc(filename(mydir, &path));
+        %let did = %sysfunc(dopen(&mydir)); 
+        %let memcnt = %sysfunc(dnum(&did)); 
+    
+        %do i = 1 %to &memcnt; 
+            %let name = %qsysfunc(dread(&did, &i)); 
+            %if %qupcase(%qscan(&name, -1, .)) = CSV %then %do; 
+                %let dsn_name = %qscan(&name, 1, .); 
+                proc casutil; 
+                    load file="&path/&name" casout="&dsn_name" 
+                        outcaslib="casuser" importoptions=(filetype="CSV") 
+                        replace ; 
+                quit; 
+            %end; 
+        %end; 
+    
+        %let rc = %sysfunc(dclose(&did)); 
+    %mend import_csv_dir; 
+
+    %import_csv_dir(/home/student/Courses/DDPWC); 
+
+    *************************************************;
+    *** CASL:  Load All CSV Files in a Directory      ***;
+    *************************************************;
+
+    caslib mylib path="/home/student/Courses/DDPWC";
+    libname mylib cas caslib=mylib;
+
+    /* See the FileInfo action */
+    proc cas;
+      table.fileinfo / caslib="mylib";
+    quit;
+
+    /* Loop over the FileInfo results with LoadTable */
+    proc cas;
+      table.fileinfo result=filesToLoad/ caslib="mylib";
+ 
+      do i = 1 to dim(filesToLoad.FileInfo);
+         fname = filesToLoad.FileInfo[i,'Name'];
+         if scan(fname,2,'.')='csv' then do;
+            table.loadtable / 
+               caslib="mylib"
+               path=fname;
+         end;
+  end;
+quit;
+
+*************************************************************;
+*** Section 6:  Use a Parameter Table to Drive Processing ***;
+*************************************************************;
+
+/* Load the Parameter Table to CAS */
+proc cas;
+    table.loadtable / caslib="mylib" path="ParameterTable.sas7bdat";
+
+    table.fetch / table={caslib="mylib" name="ParameterTable"}; 
+quit;
+
+
+/* Read the Orion_Profit condition and apply it to a report */
+proc cas;
+    table.fetch result=OrionParm /  
+        table={caslib="mylib" name="ParameterTable"
+               where="process='Orion_Profit'"};
+
+    whereClause='"' || OrionParm.Fetch[1, 'Condition'] || '"';
+
+    print whereClause;
+               
+    simple.summary 
+        table={caslib="Public" name="Orion_Profit"
+               groupBy="Product_Category"
+               where=whereClause}
+        inputs={"Profit"}
+        subset={"sum"};
+quit;
+
+
+*** Terminate the CAS session ***;
+cas mysess terminate;
