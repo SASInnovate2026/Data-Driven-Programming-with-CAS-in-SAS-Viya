@@ -150,8 +150,8 @@
       simple.summary 
         table={caslib="Public" name="Orion_Profit"
                groupBy="Product_Category"}
-            inputs={"Profit"}
-            subset={"sum"};
+        inputs={"Profit"}
+        subset={"sum"};
     quit;    
 
 *************************************************;
@@ -264,7 +264,7 @@ proc cas;
         table={caslib="mylib" name="ParameterTable"
                where="process='Orion_Profit'"};
 
-    whereClause='"' || OrionParm.Fetch[1, 'Condition'] || '"';
+    whereClause=OrionParm.Fetch[1, 'Condition'];
 
     print whereClause;
                
