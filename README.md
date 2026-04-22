@@ -5,7 +5,7 @@ With the adoption of SAS® Viya®, processing in CAS is becoming more common, an
 
 ## Important Information
 
-This site provides the collateral for a specific SAS Innovate 2026 session provided by SAS Education.  The instructions in these pages are specific to the workshop and ***should not*** be considered a replacement for the official [SAS Documentation](http://documentation.sas.com).  Some parts of these instructions will **only** work correctly in the Lab environments provided by SAS Education.
+This site provides the collateral for a specific SAS Innovate 2026 session provided by SAS Education.  The instructions in these pages are specific to the workshop and should not be considered a replacement for the official [SAS Documentation](http://documentation.sas.com).  Some parts of these instructions will only work correctly in the Lab environments provided by SAS Education.
 
 All content within this site is Copyright &copy; SAS Institute Inc. All Rights Reserved.
 
